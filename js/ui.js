@@ -79,31 +79,37 @@ const UI = (() => {
     }
   
     function renderMembers(members) {
-      const list = document.getElementById("membersList");
-      const count = document.getElementById("memberCount");
-      const meta = document.getElementById("topRoomMeta");
-      if (!list) return;
-  
-      const entries = Object.values(members || {});
-      const online = entries.filter(m => m.online);
-  
-      count.textContent = entries.length;
-      meta.textContent = online.length + " online";
-  
-      list.innerHTML = "";
-      entries.forEach(m => {
-        const div = document.createElement("div");
-        div.className = "member-item";
-        div.innerHTML = `
-          <div class="member-avatar">${avatar(m.name)}</div>
-          <div class="member-info">
-            <div class="member-name">${escapeHtml(m.name)}</div>
-            <div class="member-status">${m.online ? "online" : timeAgo(m.lastSeen || 0)}</div>
-          </div>
-          <div class="member-online-dot ${m.online ? "online" : ""}"></div>
-        `;
-        list.appendChild(div);
-      });
+      function renderMembers(members) {
+        const container = document.getElementById("membersList");
+      
+        if (!members || Object.keys(members).length === 0) {
+          container.innerHTML = "<div class='empty'>no members</div>";
+          return;
+        }
+      
+        container.innerHTML = "";
+      
+        Object.values(members).forEach(member => {
+          const div = document.createElement("div");
+          div.className = "member";
+      
+          let status = "";
+      
+          if (member.online) {
+            status = "<span class='online-dot'></span> online";
+          } else {
+            const diff = Date.now() - (member.lastSeen || 0);
+            status = "last seen " + formatTime(diff);
+          }
+      
+          div.innerHTML = `
+            <div class="member-name">${member.name}</div>
+            <div class="member-status">${status}</div>
+          `;
+      
+          container.appendChild(div);
+        });
+      }
     }
   
     return {
@@ -113,4 +119,17 @@ const UI = (() => {
       updateRoomUI, renderMembers
     };
   })();
-  // ══════
+  function formatTime(ms) {
+    const sec = Math.floor(ms / 1000);
+  
+    if (sec < 60) return sec + "s ago";
+  
+    const min = Math.floor(sec / 60);
+    if (min < 60) return min + "m ago";
+  
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + "h ago";
+  
+    const day = Math.floor(hr / 24);
+    return day + "d ago";
+  }

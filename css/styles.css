@@ -591,3 +591,29 @@ body {
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
 audio { display:none; }
+
+.member {
+  padding:10px 12px;
+  border-bottom:1px solid var(--border);
+}
+
+.member-name {
+  font-size:14px;
+  font-weight:500;
+}
+
+.member-status {
+  font-size:12px;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.online-dot {
+  width:8px;
+  height:8px;
+  background:#2ed573;
+  border-radius:50%;
+  display:inline-block;
+}
