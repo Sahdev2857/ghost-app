@@ -1,0 +1,77 @@
+Ghost Chat
+
+A private real-time chat application with secure rooms, passphrase protection, and live presence tracking.
+
+Features
+
+Private rooms with custom room keys
+Join rooms using a passphrase
+Persistent user identity (no need to re-enter name)
+Auto rejoin last room after refresh
+Real-time messaging using Firebase
+Online / Offline status with last seen
+Clean dark UI
+
+Tech Stack
+
+Frontend: HTML, CSS, JavaScript
+Backend: Firebase Realtime Database
+Session Handling: LocalStorage
+
+Project Structure
+
+ghost-app/
+
+index.html
+css/style.css
+js/app.js
+js/rooms.js
+js/chat.js
+js/call.js
+js/firebase.js
+js/crypto.js
+js/ui.js
+
+How to Run
+
+Clone the repo
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+Go into project
+cd ghost-app
+Install Firebase CLI
+npm install -g firebase-tools
+Login
+firebase login
+Deploy
+firebase deploy --only hosting
+
+Live Demo
+
+https://ca-imp-questions.web.app
+
+How It Works
+
+Each user gets a unique persistent userId
+Rooms are stored using roomId
+Members are tracked using userId (prevents duplicates)
+Presence is handled using Firebase onDisconnect
+
+Limitations
+
+Passphrase stored locally (not fully secure)
+No end-to-end encryption yet
+No file/media sharing
+
+Future Improvements
+
+Message seen and delivered ticks
+Voice and video calling
+End-to-end encryption
+Invite links / QR join
+Better UI animations
+
+Author
+
+Sahdev
+
+If you like this project, consider giving it a star on GitHub
