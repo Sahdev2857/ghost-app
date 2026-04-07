@@ -1,1205 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="stylesheet" href="css/styles.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ghost — Private Chat</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap');
+<title>Ghost — Private Rooms</title>
 
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #1a1a24;
-    --surface3: #22222f;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.13);
-    --text: #f0f0f5;
-    --muted: rgba(240,240,245,0.4);
-    --accent: #7c6fff;
-    --accent2: #5b4fd4;
-    --danger: #ff4757;
-    --green: #2ed573;
-    --mono: 'DM Mono', monospace;
-    --sans: 'Syne', sans-serif;
-  }
-
-  html, body { height: 100%; overflow: hidden; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    height: -webkit-fill-available;
-  }
-
-  /* ── SCREENS ── */
-  .screen {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    transition: opacity 0.3s, transform 0.3s;
-    overflow: hidden;
-  }
-  .screen.hidden { opacity:0; pointer-events:none; transform:scale(0.96); }
-
-  /* ── LOCK SCREEN ── */
-  #lockScreen {
-    background: var(--bg);
-    align-items: center; justify-content: center;
-    gap: 40px; padding: 32px;
-  }
-
-  .lock-brand { display:flex; flex-direction:column; align-items:center; gap:14px; }
-
-  .ghost-logo {
-    width: 72px; height: 72px; border-radius: 22px;
-    background: linear-gradient(135deg, var(--accent), #5b4fd4);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 34px;
-    box-shadow: 0 0 40px rgba(124,111,255,0.25);
-  }
-
-  .brand-name {
-    font-size: 26px; font-weight: 700; letter-spacing: 0.08em;
-    background: linear-gradient(135deg, #fff 30%, var(--accent));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-
-  .brand-tagline {
-    font-size: 11px; color: var(--muted);
-    font-family: var(--mono); letter-spacing: 0.12em;
-  }
-
-  .lock-form { width: 100%; max-width: 320px; display:flex; flex-direction:column; gap:12px; }
-
-  .lock-label {
-    font-size: 11px; color: var(--muted);
-    font-family: var(--mono); letter-spacing: 0.1em; text-align: center;
-  }
-
-  .lock-input {
-    width: 100%; background: var(--surface);
-    border: 1px solid var(--border2); border-radius: 14px;
-    padding: 15px 18px; color: var(--text);
-    font-family: var(--mono); font-size: 15px;
-    outline: none; letter-spacing: 0.2em;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .lock-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(124,111,255,0.15);
-  }
-  .lock-input::placeholder { color: var(--muted); letter-spacing: 0.05em; }
-
-  .lock-name-input {
-    width: 100%; background: var(--surface);
-    border: 1px solid var(--border2); border-radius: 14px;
-    padding: 12px 18px; color: var(--text);
-    font-family: var(--sans); font-size: 14px;
-    outline: none; transition: border-color 0.2s;
-    letter-spacing: 0.02em;
-  }
-  .lock-name-input:focus { border-color: var(--accent); }
-  .lock-name-input::placeholder { color: var(--muted); }
-
-  .unlock-btn {
-    width: 100%; padding: 15px; border-radius: 14px;
-    background: var(--accent); border: none; cursor: pointer;
-    color: #fff; font-family: var(--sans); font-size: 14px; font-weight: 700;
-    letter-spacing: 0.06em; transition: all 0.15s;
-  }
-  .unlock-btn:active { transform: scale(0.97); background: var(--accent2); }
-
-  .lock-err {
-    font-size: 12px; color: var(--danger);
-    font-family: var(--mono); text-align: center; min-height: 16px;
-  }
-
-  .lock-hint {
-    font-size: 11px; color: var(--muted);
-    font-family: var(--mono); text-align: center;
-  }
-
-  /* ── TOP BAR ── */
-  .top-bar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 20px 14px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-    flex-shrink: 0;
-  }
-
-  .top-left { display:flex; align-items:center; gap:10px; }
-  .top-ghost { font-size: 20px; }
-  .top-name { font-size: 17px; font-weight: 700; letter-spacing: 0.04em; }
-
-  .conn-badge {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--surface2); border: 1px solid var(--border2);
-    border-radius: 20px; padding: 5px 10px;
-  }
-  .conn-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--muted); transition: all 0.3s;
-  }
-  .conn-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .conn-dot.calling { background: #ffd700; box-shadow: 0 0 6px #ffd700; animation: blink 0.8s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .conn-label { font-size: 11px; font-family: var(--mono); color: var(--muted); }
-
-  /* ── NAV TABS ── */
-  .nav-tabs {
-    display: flex; border-bottom: 1px solid var(--border);
-    background: var(--bg); flex-shrink: 0;
-  }
-  .nav-tab {
-    flex: 1; padding: 13px 8px; text-align: center;
-    font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em;
-    color: var(--muted); cursor: pointer; transition: all 0.2s;
-    border-bottom: 2px solid transparent;
-    user-select: none;
-  }
-  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* ── TAB CONTENTS ── */
-  .tab-content { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-  .tab-content.active { display: flex; }
-
-  /* ── CHAT ── */
-  .messages-area {
-    flex: 1; overflow-y: auto; padding: 16px;
-    display: flex; flex-direction: column; gap: 8px;
-    scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
-  }
-
-  .msg-group { display: flex; flex-direction: column; gap: 3px; }
-
-  .msg {
-    max-width: 76%; padding: 10px 14px;
-    font-size: 14px; line-height: 1.55;
-    animation: msgPop 0.18s ease-out;
-    word-break: break-word;
-  }
-  @keyframes msgPop { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
-
-  .msg.mine {
-    align-self: flex-end; background: var(--accent);
-    border-radius: 18px 18px 5px 18px;
-  }
-  .msg.theirs {
-    align-self: flex-start; background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 18px 18px 18px 5px;
-  }
-
-  .msg-meta {
-    font-size: 10px; font-family: var(--mono);
-    opacity: 0.45; margin-top: 3px;
-  }
-  .msg.mine .msg-meta { text-align: right; }
-
-  .msg-sender {
-    font-size: 10px; font-family: var(--mono);
-    color: var(--muted); margin-bottom: 2px;
-    padding: 0 4px;
-  }
-  .msg-sender.mine { text-align: right; }
-
-  .system-msg {
-    text-align: center; font-size: 11px;
-    font-family: var(--mono); color: var(--muted);
-    padding: 4px 0; letter-spacing: 0.06em;
-  }
-
-  .empty-chat {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 10px; opacity: 0.35;
-  }
-  .empty-icon { font-size: 36px; }
-  .empty-text { font-size: 13px; font-family: var(--mono); color: var(--muted); }
-
-  .typing-indicator {
-    display: none; align-self: flex-start;
-    background: var(--surface2); border: 1px solid var(--border2);
-    border-radius: 18px 18px 18px 5px;
-    padding: 10px 16px; gap: 4px;
-    align-items: center;
-  }
-  .typing-indicator.visible { display: flex; }
-  .typing-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--muted);
-    animation: typeDot 1.2s ease-in-out infinite;
-  }
-  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes typeDot { 0%,60%,100%{opacity:0.3;transform:scale(0.8)} 30%{opacity:1;transform:scale(1.1)} }
-
-  .msg-input-row {
-    display: flex; gap: 10px; padding: 12px 16px;
-    border-top: 1px solid var(--border); background: var(--bg);
-    flex-shrink: 0;
-  }
-
-  .msg-input {
-    flex: 1; background: var(--surface2);
-    border: 1px solid var(--border2); border-radius: 24px;
-    padding: 11px 18px; color: var(--text);
-    font-family: var(--sans); font-size: 14px;
-    outline: none; transition: border-color 0.2s;
-    resize: none; max-height: 100px; line-height: 1.4;
-  }
-  .msg-input:focus { border-color: var(--accent); }
-  .msg-input::placeholder { color: var(--muted); }
-
-  .send-btn {
-    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
-    background: var(--accent); border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s; align-self: flex-end;
-  }
-  .send-btn:active { transform: scale(0.88); }
-  .send-btn svg { width: 18px; height: 18px; fill: white; }
-
-  /* ── CALL TAB ── */
-  #callTab {
-    align-items: center; justify-content: center;
-    gap: 22px; padding: 32px 24px;
-  }
-
-  .friend-avatar {
-    width: 88px; height: 88px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #ff6b9d);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 30px; font-weight: 700; color: white;
-    border: 3px solid var(--border2);
-    letter-spacing: 0.02em;
-    font-family: var(--sans);
-  }
-
-  .friend-name-display { font-size: 22px; font-weight: 700; }
-  .call-status-text { font-size: 12px; color: var(--muted); font-family: var(--mono); }
-
-  .call-indicator {
-    display: none; align-items: center; gap: 10px;
-    background: var(--surface2); border: 1px solid var(--border2);
-    border-radius: 24px; padding: 10px 18px;
-  }
-  .call-indicator.active { display: flex; }
-
-  .call-wave { display:flex; gap:3px; align-items:center; }
-  .call-wave span {
-    display:block; width:3px; border-radius:2px;
-    background: var(--green);
-    animation: wave 0.9s ease-in-out infinite;
-  }
-  .call-wave span:nth-child(1){height:8px;animation-delay:0s}
-  .call-wave span:nth-child(2){height:14px;animation-delay:0.15s}
-  .call-wave span:nth-child(3){height:20px;animation-delay:0.3s}
-  .call-wave span:nth-child(4){height:14px;animation-delay:0.15s}
-  .call-wave span:nth-child(5){height:8px;animation-delay:0s}
-  @keyframes wave { 0%,100%{transform:scaleY(0.6)} 50%{transform:scaleY(1)} }
-
-  .call-timer { font-family: var(--mono); font-size: 16px; font-weight: 500; }
-
-  .call-btn-row { display:flex; gap:28px; }
-
-  .call-btn { display:flex; flex-direction:column; align-items:center; gap:9px; cursor:pointer; }
-
-  .call-btn-circle {
-    width: 68px; height: 68px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    border: none; cursor: pointer; transition: all 0.15s;
-  }
-  .call-btn-circle:active { transform: scale(0.88); }
-  .call-btn-circle.voice { background: var(--accent); }
-  .call-btn-circle.video-c { background: var(--surface2); border: 1px solid var(--border2); }
-  .call-btn-circle.end-c { background: var(--danger); }
-  .call-btn-circle.mute-c { background: var(--surface2); border: 1px solid var(--border2); }
-  .call-btn-circle.muted { background: var(--surface3); border: 1px solid var(--danger); }
-  .call-btn-label { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-
-  .room-row {
-    display: flex; gap: 8px; width: 100%; max-width: 300px;
-  }
-
-  .room-input {
-    flex: 1; background: var(--surface2);
-    border: 1px solid var(--border2); border-radius: 12px;
-    padding: 11px 14px; color: var(--text);
-    font-family: var(--mono); font-size: 13px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .room-input:focus { border-color: var(--accent); }
-  .room-input::placeholder { color: var(--muted); }
-
-  .room-btn {
-    background: var(--accent); border: none;
-    border-radius: 12px; padding: 11px 16px;
-    color: white; font-family: var(--sans); font-size: 13px;
-    font-weight: 600; cursor: pointer; transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .room-btn:active { transform: scale(0.95); background: var(--accent2); }
-
-  .call-hint {
-    font-size: 11px; font-family: var(--mono); color: var(--muted);
-    text-align: center; line-height: 1.8; max-width: 280px;
-  }
-
-  /* ── VIDEO TAB ── */
-  #videoTab { position: relative; background: #000; }
-
-  .video-main {
-    flex: 1; position: relative; background: #000;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-  }
-
-  #remoteVideo {
-    width: 100%; height: 100%; object-fit: cover;
-    display: none;
-  }
-
-  .video-off-state {
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 12px; opacity: 0.3;
-  }
-  .video-off-icon { font-size: 48px; }
-  .video-off-text { font-size: 13px; font-family: var(--mono); color: var(--muted); }
-
-  #localVideo {
-    position: absolute; bottom: 14px; right: 14px;
-    width: 92px; height: 128px; border-radius: 12px;
-    object-fit: cover; display: none;
-    border: 2px solid var(--border2);
-    background: var(--surface);
-  }
-
-  .video-controls {
-    display: flex; gap: 16px; padding: 16px 24px;
-    justify-content: center; align-items: center;
-    border-top: 1px solid var(--border);
-    background: rgba(0,0,0,0.9); flex-shrink: 0;
-  }
-
-  .vid-btn {
-    padding: 11px 22px; border-radius: 12px;
-    font-family: var(--sans); font-size: 13px; font-weight: 600;
-    border: none; cursor: pointer; transition: all 0.15s;
-  }
-  .vid-btn:active { transform: scale(0.95); }
-  .vid-btn.start { background: var(--accent); color: white; }
-  .vid-btn.end { background: var(--danger); color: white; }
-  .vid-btn.mute { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
-  .vid-btn.muted { background: var(--surface3); color: var(--danger); border: 1px solid var(--danger); }
-
-  /* ── PANIC ── */
-  #panicOverlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: #000;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 20px; opacity: 0; pointer-events: none;
-    transition: opacity 0.12s;
-  }
-  #panicOverlay.active { opacity: 1; pointer-events: all; }
-  .panic-icon { font-size: 40px; animation: panicPulse 0.3s ease-in-out; }
-  @keyframes panicPulse { 0%{transform:scale(0.5)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
-  .panic-label { font-family: var(--mono); font-size: 13px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; }
-
-  .tap-ring {
-    position: fixed; z-index: 9998;
-    width: 56px; height: 56px; border-radius: 50%;
-    border: 2px solid var(--danger);
-    transform: translate(-50%, -50%) scale(0.5);
-    animation: tapExpand 0.5s ease-out forwards;
-    pointer-events: none;
-  }
-  @keyframes tapExpand {
-    from{opacity:0.9;transform:translate(-50%,-50%) scale(0.5)}
-    to{opacity:0;transform:translate(-50%,-50%) scale(2.2)}
-  }
-
-  .panic-hint {
-    position: fixed; bottom: 28px; left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--mono); font-size: 11px;
-    color: var(--danger); z-index: 9997;
-    opacity: 0; transition: opacity 0.2s;
-    background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.2);
-    padding: 6px 14px; border-radius: 20px; white-space: nowrap;
-  }
-  .panic-hint.show { opacity: 1; }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed; bottom: 80px; left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    background: var(--surface2); border: 1px solid var(--border2);
-    border-radius: 20px; padding: 8px 18px;
-    font-size: 12px; font-family: var(--mono); color: var(--text);
-    z-index: 9996; opacity: 0; pointer-events: none;
-    transition: all 0.2s; white-space: nowrap;
-  }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  audio { display: none; }
-</style>
-</head>
-<body>
-
-<!-- LOCK SCREEN -->
-<div class="screen" id="lockScreen">
-  <div class="lock-brand">
+<!-- ════════════════════════════════════════
+     SCREEN 1 — IDENTITY (enter name)
+════════════════════════════════════════ -->
+<div class="screen" id="identityScreen">
+  <div class="brand-center">
     <div class="ghost-logo">👻</div>
     <div class="brand-name">GHOST</div>
     <div class="brand-tagline">private · encrypted · ephemeral</div>
   </div>
-  <div class="lock-form">
-    <div class="lock-label">your name</div>
-    <input class="lock-name-input" id="nameInput" placeholder="e.g. zozo or friend" autocomplete="off" spellcheck="false">
-    <div class="lock-label" style="margin-top:8px">passphrase</div>
-    <input class="lock-input" id="passInput" type="password" placeholder="secret passphrase" autocomplete="off" spellcheck="false">
-    <button class="unlock-btn" onclick="tryUnlock()">unlock ghost</button>
-    <div class="lock-err" id="lockErr"></div>
-    <div class="lock-hint">triple-tap anywhere to panic wipe</div>
+  <div class="form-card">
+    <div class="form-label">your display name</div>
+    <input class="form-input" id="usernameInput" placeholder="e.g. zozo" autocomplete="off" spellcheck="false" maxlength="20">
+    <div class="form-err" id="usernameErr"></div>
+    <button class="btn-primary" onclick="App.setIdentity()">continue</button>
+    <div class="form-hint">triple-tap anywhere = panic wipe everything</div>
   </div>
 </div>
 
-<!-- HOME SCREEN -->
-<div class="screen hidden" id="homeScreen">
-  <div class="top-bar">
-    <div class="top-left">
-      <span class="top-ghost">👻</span>
-      <span class="top-name" id="topName">ghost</span>
+<!-- ════════════════════════════════════════
+     SCREEN 2 — LOBBY (create / join room)
+════════════════════════════════════════ -->
+<div class="screen hidden" id="lobbyScreen">
+  <div class="lobby-top">
+    <div class="lobby-brand">👻 ghost</div>
+    <div class="lobby-user" id="lobbyUsername"></div>
+  </div>
+
+  <div class="lobby-body">
+    <!-- CREATE ROOM -->
+    <div class="lobby-card">
+      <div class="lobby-card-title">create room</div>
+    
+      <div class="form-label">room key</div>
+      <input 
+        class="form-input" 
+        id="createRoomId" 
+        placeholder="e.g. myroom123"
+        autocomplete="off" 
+        spellcheck="false" 
+        maxlength="20">
+    
+      <div class="form-label">room name</div>
+      <input class="form-input" id="createRoomName" placeholder="e.g. secret squad">
+    
+      <div class="form-label" style="margin-top:10px">passphrase</div>
+      <input class="form-input" id="createRoomPass" type="password">
+    
+      <div class="form-label" style="margin-top:10px">max users</div>
+      <select class="form-select" id="createRoomMax">
+        <option value="2">2 people</option>
+        <option value="5">5 people</option>
+        <option value="10">10 people</option>
+        <option value="20">20 people</option>
+      </select>
+    
+      <div class="form-err" id="createErr"></div>
+    
+      <button class="btn-primary" style="margin-top:14px" onclick="Rooms.create()">
+        create room
+      </button>
     </div>
-    <div class="conn-badge">
-      <div class="conn-dot" id="connDot"></div>
-      <div class="conn-label" id="connLabel">offline</div>
+
+    <!-- JOIN ROOM -->
+    <div class="lobby-card">
+      <div class="lobby-card-title">join room</div>
+      <div class="form-label">room ID</div>
+      <input class="form-input mono" id="joinRoomId" placeholder="paste room ID" autocomplete="off" spellcheck="false">
+      <div class="form-label" style="margin-top:10px">passphrase</div>
+      <input class="form-input" id="joinRoomPass" type="password" placeholder="room passphrase" autocomplete="off">
+      <div class="form-err" id="joinErr"></div>
+      <button class="btn-primary" style="margin-top:14px" onclick="Rooms.join()">join room</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN 3 — CHAT APP
+════════════════════════════════════════ -->
+<div class="screen hidden" id="appScreen">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-brand">👻 ghost</div>
+      <button class="sidebar-close" onclick="UI.closeSidebar()">✕</button>
+    </div>
+
+    <div class="sidebar-section-label">room</div>
+    <div class="room-info-card" id="sidebarRoomInfo">
+      <div class="room-info-name" id="sidebarRoomName">—</div>
+      <div class="room-info-id" id="sidebarRoomId">—</div>
+      <button class="copy-id-btn" onclick="UI.copyRoomId()">copy room ID</button>
+    </div>
+
+    <div class="sidebar-section-label">members (<span id="memberCount">0</span>)</div>
+    <div class="members-list" id="membersList"></div>
+
+    <div class="sidebar-footer">
+      <button class="btn-danger-sm" onclick="Rooms.leave()">leave room</button>
     </div>
   </div>
 
-  <div class="nav-tabs">
-    <div class="nav-tab active" id="tab-chat" onclick="switchTab('chat')">chat</div>
-    <div class="nav-tab" id="tab-call" onclick="switchTab('call')">voice</div>
-    <div class="nav-tab" id="tab-video" onclick="switchTab('video')">video</div>
-  </div>
+  <!-- MAIN AREA -->
+  <div class="main-area">
 
-  <!-- CHAT -->
-  <div class="tab-content active" id="chatTab">
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <div class="top-left">
+        <button class="hamburger" onclick="UI.openSidebar()">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="top-room-info">
+          <div class="top-room-name" id="topRoomName">ghost</div>
+          <div class="top-room-meta" id="topRoomMeta">0 online</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="top-action-btn" id="voiceCallBtn" onclick="CallManager.startCall('voice')" title="voice call">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+        </button>
+        <button class="top-action-btn" id="videoCallBtn" onclick="CallManager.startCall('video')" title="video call">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        </button>
+        <div class="conn-badge">
+          <div class="conn-dot" id="connDot"></div>
+          <div class="conn-label" id="connLabel">offline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT AREA -->
     <div class="messages-area" id="messagesArea">
       <div class="empty-chat" id="emptyChat">
         <div class="empty-icon">💬</div>
         <div class="empty-text">no messages yet</div>
       </div>
     </div>
-    <div class="typing-indicator" id="typingIndicator">
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
+
+    <!-- TYPING INDICATOR -->
+    <div class="typing-bar" id="typingBar" style="display:none">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+      <div class="typing-name" id="typingName"></div>
     </div>
+
+    <!-- MESSAGE INPUT -->
     <div class="msg-input-row">
-      <textarea class="msg-input" id="msgInput" placeholder="message your ghost..." rows="1" autocomplete="off" spellcheck="false"></textarea>
-      <button class="send-btn" onclick="sendMsg()">
+      <textarea class="msg-input" id="msgInput" placeholder="message..." rows="1" autocomplete="off" spellcheck="false"></textarea>
+      <button class="send-btn" onclick="Chat.send()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
   </div>
+</div>
 
-  <!-- VOICE CALL -->
-  <div class="tab-content" id="callTab">
-    <div class="friend-avatar" id="friendAvatar">?</div>
-    <div class="friend-name-display" id="friendNameDisplay">your friend</div>
-    <div class="call-status-text" id="callStatusText">not in a call</div>
-
-    <div class="call-indicator" id="callIndicator">
-      <div class="call-wave">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div class="call-timer" id="callTimer">00:00</div>
-    </div>
-
-    <div class="call-btn-row" id="callBtns">
-      <div class="call-btn" onclick="startVoiceCall()">
-        <button class="call-btn-circle voice">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-          </svg>
-        </button>
-        <div class="call-btn-label">start call</div>
-      </div>
-      <div class="call-btn" onclick="joinCall()">
-        <button class="call-btn-circle voice" style="background:#2ed573;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-          </svg>
-        </button>
-        <div class="call-btn-label">join call</div>
-      </div>
-    </div>
-
-    <div class="call-btn-row" id="inCallBtns" style="display:none">
-      <div class="call-btn" onclick="toggleMute()">
-        <button class="call-btn-circle mute-c" id="muteBtn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-          </svg>
-        </button>
-        <div class="call-btn-label" id="muteLabel">mute</div>
-      </div>
-      <div class="call-btn" onclick="endCall()">
-        <button class="call-btn-circle end-c">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
-          </svg>
-        </button>
-        <div class="call-btn-label">end</div>
-      </div>
-    </div>
-
-    <div style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:8px;align-items:center;">
-      <div class="call-hint">both you and your friend enter the same room code to connect. must be on same wifi for direct P2P.</div>
-      <div class="room-row">
-        <input class="room-input" id="roomInput" placeholder="room code (e.g. ghost42)" autocomplete="off" spellcheck="false">
-        <button class="room-btn" onclick="joinVoiceRoom()">join</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- VIDEO CALL -->
-  <div class="tab-content" id="videoTab">
-    <div class="video-main" id="videoMain">
-      <video id="remoteVideo" autoplay playsinline></video>
-      <div class="video-off-state" id="videoOffState">
-        <div class="video-off-icon">📹</div>
-        <div class="video-off-text">camera off</div>
-      </div>
-      <video id="localVideo" autoplay playsinline muted></video>
-    </div>
-    <div class="video-controls">
-      <button class="vid-btn start" id="vidStartBtn" onclick="startVideoCall()">start camera</button>
-      <button class="vid-btn end" id="vidEndBtn" onclick="endVideoCall()" style="display:none">end video</button>
-      <button class="vid-btn mute" id="vidMuteBtn" onclick="toggleVideoMute()" style="display:none">mute mic</button>
-    </div>
-    <div style="padding:8px 20px 14px;text-align:center;">
-      <div style="font-size:11px;font-family:var(--mono);color:var(--muted)">uses same room code as voice tab</div>
+<!-- ════════════════════════════════════════
+     INCOMING CALL MODAL
+════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="incomingCallModal">
+  <div class="incoming-call-card">
+    <div class="incoming-avatar" id="incomingAvatar">?</div>
+    <div class="incoming-name" id="incomingCallerName">someone</div>
+    <div class="incoming-type" id="incomingCallType">voice call</div>
+    <div class="incoming-actions">
+      <button class="call-action-btn reject" onclick="CallManager.rejectCall()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+      </button>
+      <button class="call-action-btn accept" onclick="CallManager.acceptCall()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+      </button>
     </div>
   </div>
 </div>
 
-<!-- PANIC OVERLAY -->
-<div id="panicOverlay">
+<!-- ════════════════════════════════════════
+     ACTIVE CALL OVERLAY
+════════════════════════════════════════ -->
+<div class="call-overlay hidden" id="callOverlay">
+  <!-- Video feeds -->
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+
+  <!-- Call info -->
+  <div class="call-overlay-top">
+    <div class="call-overlay-name" id="callOverlayName">calling...</div>
+    <div class="call-overlay-status" id="callOverlayStatus">connecting</div>
+    <div class="call-timer" id="callTimer">00:00</div>
+  </div>
+
+  <!-- Avatar (shown when no video) -->
+  <div class="call-avatar-center" id="callAvatarCenter">
+    <div class="call-big-avatar" id="callBigAvatar">?</div>
+  </div>
+
+  <!-- Controls -->
+  <div class="call-controls">
+    <div class="call-ctrl-group">
+      <button class="call-ctrl-btn" id="muteBtn" onclick="CallManager.toggleMute()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        <span>mute</span>
+      </button>
+      <button class="call-ctrl-btn end-call" onclick="CallManager.endCall()">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+        <span>end</span>
+      </button>
+      <button class="call-ctrl-btn" id="cameraBtn" onclick="CallManager.toggleCamera()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <span>camera</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PANIC OVERLAY
+════════════════════════════════════════ -->
+<!-- <div id="panicOverlay" class="panic-overlay">
   <div class="panic-icon">🔴</div>
   <div class="panic-label">wiped.</div>
 </div>
 
 <div class="panic-hint" id="panicHint">tap 3x to wipe everything</div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"></div> -->
+
+<!-- Firebase -->
+
+<!-- App modules -->
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-<script>
-// ════════════════════════════════════════
-//  ⚙️  PASTE YOUR FIREBASE CONFIG HERE
-// ════════════════════════════════════════
-const firebaseConfig = {
-  apiKey: "AIzaSyADzMVDweO70bTVh_QeiJ-mzvxm3JZgr1c",
-  authDomain: "ca-imp-questions.firebaseapp.com",
-  databaseURL: "https://ca-imp-questions-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ca-imp-questions",
-  storageBucket: "ca-imp-questions.firebasestorage.app",
-  messagingSenderId: "665546366323",
-  appId: "1:665546366323:web:5fc3c659317c4883daf906"
-};
-
-// ════════════════════════════════════════
-//  🔐  CHANGE THIS PASSPHRASE
-// ════════════════════════════════════════
-const PASSPHRASE = "ghost123";
-
-// ════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════
-let myName = "";
-let db = null;
-let messagesRef = null;
-let localStream = null;
-let peerConn = null;
-let callActive = false;
-let callSeconds = 0;
-let callInterval = null;
-let isMuted = false;
-let tapCount = 0;
-let tapTimer = null;
-let configOk = false;
-
-// ════════════════════════════════════════
-//  FIREBASE INIT
-// ════════════════════════════════════════
-function initFirebase() {
-  try {
-    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-      showToast("⚠️ firebase not configured — local mode");
-      return;
-    }
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    messagesRef = db.ref("ghost_zx9k_private/messages");
-    setConnStatus(true);
-    listenMessages();
-    configOk = true;
-  } catch(e) {
-    showToast("firebase error: " + e.message);
-  }
-}
-
-function setConnStatus(online) {
-  const dot = document.getElementById("connDot");
-  const label = document.getElementById("connLabel");
-  if (online) {
-    dot.classList.add("online");
-    label.textContent = "connected";
-  } else {
-    dot.classList.remove("online");
-    label.textContent = "offline";
-  }
-}
-
-// ════════════════════════════════════════
-//  LOCK / UNLOCK
-// ════════════════════════════════════════
-function tryUnlock() {
-  const name = document.getElementById("nameInput").value.trim();
-  const pass = document.getElementById("passInput").value;
-  if (!name) {
-    document.getElementById("lockErr").textContent = "enter your name";
-    return;
-  }
-  if (pass !== PASSPHRASE) {
-    document.getElementById("lockErr").textContent = "wrong passphrase";
-    setTimeout(() => document.getElementById("lockErr").textContent = "", 2000);
-    return;
-  }
-  myName = name;
-  document.getElementById("topName").textContent = "ghost · " + name;
-  document.getElementById("lockScreen").classList.add("hidden");
-  document.getElementById("homeScreen").classList.remove("hidden");
-  document.getElementById("passInput").value = "";
-  initFirebase();
-}
-
-document.getElementById("passInput").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
-document.getElementById("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("passInput").focus(); });
-
-// ════════════════════════════════════════
-//  TABS
-// ════════════════════════════════════════
-function switchTab(name) {
-  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
-  document.getElementById(name + "Tab").classList.add("active");
-  document.getElementById("tab-" + name).classList.add("active");
-}
-
-// ════════════════════════════════════════
-//  CHAT — Firebase Realtime
-// ════════════════════════════════════════
-function sendMsg() {
-  const input = document.getElementById("msgInput");
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = "";
-  input.style.height = "";
-
-  const msg = {
-    text: text,
-    sender: myName,
-    ts: Date.now()
-  };
-
-  if (configOk && messagesRef) {
-    messagesRef.push(msg);
-  } else {
-    renderLocalMsg(msg, true);
-  }
-}
-
-function listenMessages() {
-  if (!messagesRef) return;
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  messagesRef.orderByChild("ts").startAt(cutoff).on("child_added", snap => {
-    const msg = snap.val();
-    if (!msg) return;
-    renderFirebaseMsg(msg);
-  });
-}
-
-const renderedIds = new Set();
-
-function renderFirebaseMsg(msg) {
-  const area = document.getElementById("messagesArea");
-  const empty = document.getElementById("emptyChat");
-  if (empty) empty.style.display = "none";
-
-  const isMine = msg.sender === myName;
-  const key = msg.ts + msg.sender + msg.text.slice(0, 10);
-  if (renderedIds.has(key)) return;
-  renderedIds.add(key);
-
-  const senderDiv = document.createElement("div");
-  senderDiv.className = "msg-sender" + (isMine ? " mine" : "");
-  senderDiv.textContent = msg.sender;
-
-  const msgDiv = document.createElement("div");
-  msgDiv.className = "msg " + (isMine ? "mine" : "theirs");
-  const time = new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  msgDiv.innerHTML = escapeHtml(msg.text) + '<div class="msg-meta">' + time + "</div>";
-
-  const group = document.createElement("div");
-  group.className = "msg-group";
-  group.appendChild(senderDiv);
-  group.appendChild(msgDiv);
-  area.appendChild(group);
-  area.scrollTop = area.scrollHeight;
-}
-
-function renderLocalMsg(msg, isMine) {
-  const area = document.getElementById("messagesArea");
-  const empty = document.getElementById("emptyChat");
-  if (empty) empty.style.display = "none";
-
-  const senderDiv = document.createElement("div");
-  senderDiv.className = "msg-sender" + (isMine ? " mine" : "");
-  senderDiv.textContent = msg.sender;
-
-  const msgDiv = document.createElement("div");
-  msgDiv.className = "msg " + (isMine ? "mine" : "theirs");
-  const time = new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  msgDiv.innerHTML = escapeHtml(msg.text) + '<div class="msg-meta">' + time + "</div>";
-
-  const group = document.createElement("div");
-  group.className = "msg-group";
-  group.appendChild(senderDiv);
-  group.appendChild(msgDiv);
-  area.appendChild(group);
-  area.scrollTop = area.scrollHeight;
-}
-
-function escapeHtml(t) {
-  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
-}
-
-document.getElementById("msgInput").addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
-});
-
-document.getElementById("msgInput").addEventListener("input", function() {
-  this.style.height = "";
-  this.style.height = Math.min(this.scrollHeight, 100) + "px";
-});
-
-// ════════════════════════════════════════
-//  VOICE CALL — WebRTC
-// ════════════════════════════════════════
-const iceConfig = {
-  iceServers: [
-      {
-        urls: "stun:stun.relay.metered.ca:80",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "86ee3f8306326c92342db477",
-        credential: "K4DiZiMaRQp29oUo",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "86ee3f8306326c92342db477",
-        credential: "K4DiZiMaRQp29oUo",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "86ee3f8306326c92342db477",
-        credential: "K4DiZiMaRQp29oUo",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "86ee3f8306326c92342db477",
-        credential: "K4DiZiMaRQp29oUo",
-      },
-  ],
-};
-
-function joinVoiceRoom() {
-  const room = document.getElementById("roomInput").value.trim();
-  if (!room) { showToast("enter a room code first"); return; }
-  showToast("room set: " + room);
-}
-
-async function startVoiceCall() {
-  const room = document.getElementById("roomInput").value.trim();
-  if (!room) { showToast("enter a room code first"); return; }
-  if (!configOk || !db) { showToast("firebase not connected"); return; }
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch(e) {
-    showToast("mic permission needed"); return;
-  }
-
-  callActive = true;
-  document.getElementById("callBtns").style.display = "none";
-  document.getElementById("inCallBtns").style.display = "flex";
-  document.getElementById("callStatusText").textContent = "connecting · " + room;
-  document.getElementById("callIndicator").classList.add("active");
-  document.getElementById("connDot").classList.add("calling");
-
-  callSeconds = 0;
-  callInterval = setInterval(() => {
-    callSeconds++;
-    const m = String(Math.floor(callSeconds / 60)).padStart(2, "0");
-    const s = String(callSeconds % 60).padStart(2, "0");
-    document.getElementById("callTimer").textContent = m + ":" + s;
-  }, 1000);
-
-  await setupVoiceRTC(room);
-}
-
-async function setupVoiceRTC(room) {
-  const sigRef = db.ref("ghost_zx9k_private/signal/" + room);
-
-  // clear old stale signal data first
-  // removed buggy delete
-
-  peerConn = new RTCPeerConnection(iceConfig);
-  localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
-
-  // when remote audio arrives
-  peerConn.ontrack = e => {
-    document.querySelectorAll("audio.ghost-audio").forEach(a => a.remove());
-    const audio = document.createElement("audio");
-    audio.className = "ghost-audio";
-    audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-    document.getElementById("callStatusText").textContent = "call connected · " + room;
-  };
-
-  peerConn.onconnectionstatechange = () => {
-    const state = peerConn.connectionState;
-    if (state === "connected") {
-      document.getElementById("callStatusText").textContent = "call connected · " + room;
-    } else if (state === "failed" || state === "disconnected") {
-      showToast("call disconnected");
-      endCall();
-    }
-  };
-
-  // collect ICE candidates and push to firebase
-  peerConn.onicecandidate = e => {
-    if (e.candidate) {
-      sigRef.child("ice/" + myName).push(e.candidate.toJSON());
-    }
-  };
-
-  // CALLER: create and push offer
-  const offer = await peerConn.createOffer();
-  await peerConn.setLocalDescription(offer);
-  await sigRef.child("offer").set({ sdp: offer.sdp, type: offer.type, from: myName, ts: Date.now() });
-
-  showToast("waiting for friend to join · " + room);
-
-  // listen for answer from friend
-  sigRef.child("answer").on("value", async snap => {
-    if (!snap.exists()) return;
-    const ans = snap.val();
-    if (ans.from === myName) return;
-    if (peerConn.currentRemoteDescription) return;
-    try {
-      await peerConn.setRemoteDescription(new RTCSessionDescription(ans));
-      document.getElementById("friendNameDisplay").textContent = ans.from || "friend";
-      setFriendAvatar(ans.from || "?");
-      showToast("friend joined · connecting...");
-    } catch(e) {}
-  });
-
-  // listen for friend's ICE candidates
-  sigRef.child("ice").on("value", snap => {
-    snap.forEach(nameSnap => {
-      if (nameSnap.key === myName) return;
-      nameSnap.forEach(candSnap => {
-        const c = candSnap.val();
-        if (c && peerConn.remoteDescription) {
-          peerConn.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-        }
-      });
-    });
-  });
-}
-
-async function joinCall() {
-  const room = document.getElementById("roomInput").value.trim();
-  if (!room) { showToast("enter the room code your friend shared"); return; }
-  if (!configOk || !db) { showToast("firebase not connected"); return; }
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch(e) {
-    showToast("mic permission needed"); return;
-  }
-
-  const sigRef = db.ref("ghost_zx9k_private/signal/" + room);
-  const snap = await sigRef.child("offer").get();
-
-  if (!snap.exists()) {
-    showToast("no active call found with that code");
-    localStream.getTracks().forEach(t => t.stop()); localStream = null;
-    return;
-  }
-
-  const offerData = snap.val();
-  if (offerData.from === myName) {
-    showToast("you can't call yourself!");
-    localStream.getTracks().forEach(t => t.stop()); localStream = null;
-    return;
-  }
-
-  callActive = true;
-  document.getElementById("callBtns").style.display = "none";
-  document.getElementById("inCallBtns").style.display = "flex";
-  document.getElementById("callStatusText").textContent = "joining · " + room;
-  document.getElementById("callIndicator").classList.add("active");
-  document.getElementById("connDot").classList.add("calling");
-  document.getElementById("friendNameDisplay").textContent = offerData.from || "friend";
-  setFriendAvatar(offerData.from || "?");
-
-  callSeconds = 0;
-  callInterval = setInterval(() => {
-    callSeconds++;
-    const m = String(Math.floor(callSeconds / 60)).padStart(2, "0");
-    const s = String(callSeconds % 60).padStart(2, "0");
-    document.getElementById("callTimer").textContent = m + ":" + s;
-  }, 1000);
-
-  peerConn = new RTCPeerConnection(iceConfig);
-  localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
-
-  peerConn.ontrack = e => {
-    document.querySelectorAll("audio.ghost-audio").forEach(a => a.remove());
-    const audio = document.createElement("audio");
-    audio.className = "ghost-audio";
-    audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-    document.getElementById("callStatusText").textContent = "call connected · " + room;
-  };
-
-  peerConn.onconnectionstatechange = () => {
-    const state = peerConn.connectionState;
-    if (state === "connected") {
-      document.getElementById("callStatusText").textContent = "call connected · " + room;
-    } else if (state === "failed" || state === "disconnected") {
-      showToast("call disconnected");
-      endCall();
-    }
-  };
-
-  peerConn.onicecandidate = e => {
-    if (e.candidate) {
-      sigRef.child("ice/" + myName).push(e.candidate.toJSON());
-    }
-  };
-
-  await peerConn.setRemoteDescription(new RTCSessionDescription(offerData));
-  const answer = await peerConn.createAnswer();
-  await peerConn.setLocalDescription(answer);
-  await sigRef.child("answer").set({ sdp: answer.sdp, type: answer.type, from: myName, ts: Date.now() });
-
-  // listen for caller's ICE candidates
-  sigRef.child("ice").on("value", snap => {
-    snap.forEach(nameSnap => {
-      if (nameSnap.key === myName) return;
-      nameSnap.forEach(candSnap => {
-        const c = candSnap.val();
-        if (c && peerConn.remoteDescription) {
-          peerConn.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-        }
-      });
-    });
-  });
-
-  showToast("joined · connecting...");
-}
-
-function endCall() {
-  callActive = false;
-  isMuted = false;
-  clearInterval(callInterval);
-  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  if (peerConn) { peerConn.close(); peerConn = null; }
-  document.getElementById("callBtns").style.display = "flex";
-  document.getElementById("inCallBtns").style.display = "none";
-  document.getElementById("callStatusText").textContent = "not in a call";
-  document.getElementById("callIndicator").classList.remove("active");
-  document.getElementById("connDot").classList.remove("calling");
-  document.getElementById("muteBtn").className = "call-btn-circle mute-c";
-  document.getElementById("muteLabel").textContent = "mute";
-  document.querySelectorAll("audio[autoplay]").forEach(a => a.remove());
-}
-
-function toggleMute() {
-  if (!localStream) return;
-  isMuted = !isMuted;
-  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-  const btn = document.getElementById("muteBtn");
-  const label = document.getElementById("muteLabel");
-  if (isMuted) {
-    btn.className = "call-btn-circle muted";
-    label.textContent = "unmute";
-  } else {
-    btn.className = "call-btn-circle mute-c";
-    label.textContent = "mute";
-  }
-}
-
-// ════════════════════════════════════════
-//  VIDEO CALL
-// ════════════════════════════════════════
-let videoMuted = false;
-let videoStream = null;
-
-async function startVideoCall() {
-  try {
-    videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    const lv = document.getElementById("localVideo");
-    lv.srcObject = videoStream;
-    lv.style.display = "block";
-    document.getElementById("videoOffState").style.display = "none";
-    document.getElementById("vidStartBtn").style.display = "none";
-    document.getElementById("vidEndBtn").style.display = "block";
-    document.getElementById("vidMuteBtn").style.display = "block";
-    showToast("camera on · share room code");
-  } catch(e) {
-    showToast("camera/mic permission needed");
-  }
-}
-
-function endVideoCall() {
-  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
-  document.getElementById("localVideo").style.display = "none";
-  document.getElementById("remoteVideo").style.display = "none";
-  document.getElementById("videoOffState").style.display = "flex";
-  document.getElementById("vidStartBtn").style.display = "block";
-  document.getElementById("vidEndBtn").style.display = "none";
-  document.getElementById("vidMuteBtn").style.display = "none";
-  videoMuted = false;
-}
-
-function toggleVideoMute() {
-  if (!videoStream) return;
-  videoMuted = !videoMuted;
-  videoStream.getAudioTracks().forEach(t => t.enabled = !videoMuted);
-  const btn = document.getElementById("vidMuteBtn");
-  btn.textContent = videoMuted ? "unmute" : "mute mic";
-  btn.className = videoMuted ? "vid-btn muted" : "vid-btn mute";
-}
-
-// ════════════════════════════════════════
-//  FRIEND AVATAR
-// ════════════════════════════════════════
-function setFriendAvatar(name) {
-  const av = document.getElementById("friendAvatar");
-  av.textContent = name.charAt(0).toUpperCase();
-}
-
-// ════════════════════════════════════════
-//  PANIC WIPE — triple tap
-// ════════════════════════════════════════
-document.addEventListener("click", function(e) {
-  const ring = document.createElement("div");
-  ring.className = "tap-ring";
-  ring.style.left = e.clientX + "px";
-  ring.style.top = e.clientY + "px";
-  document.body.appendChild(ring);
-  setTimeout(() => ring.remove(), 500);
-
-  tapCount++;
-  const hint = document.getElementById("panicHint");
-
-  if (tapCount === 1) {
-    hint.textContent = "tap 2 more to wipe";
-    hint.classList.add("show");
-  } else if (tapCount === 2) {
-    hint.textContent = "tap 1 more to wipe";
-  } else if (tapCount >= 3) {
-    hint.classList.remove("show");
-    tapCount = 0;
-    clearTimeout(tapTimer);
-    triggerPanic();
-    return;
-  }
-
-  clearTimeout(tapTimer);
-  tapTimer = setTimeout(() => {
-    tapCount = 0;
-    hint.classList.remove("show");
-  }, 1600);
-});
-
-function triggerPanic() {
-  endCall();
-  endVideoCall();
-
-  if (configOk && messagesRef) {
-    messagesRef.remove().catch(() => {});
-  }
-  if (configOk && db) {
-    db.ref("ghost_zx9k_private/signal").remove().catch(() => {});
-  }
-
-  document.getElementById("messagesArea").innerHTML = `
-    <div class="empty-chat" id="emptyChat">
-      <div class="empty-icon">💬</div>
-      <div class="empty-text">no messages yet</div>
-    </div>`;
-  renderedIds.clear();
-
-  const overlay = document.getElementById("panicOverlay");
-  overlay.classList.add("active");
-  document.getElementById("homeScreen").classList.add("hidden");
-
-  setTimeout(() => {
-    overlay.classList.remove("active");
-    document.getElementById("lockScreen").classList.remove("hidden");
-    document.getElementById("passInput").value = "";
-    document.getElementById("nameInput").value = "";
-    myName = "";
-    configOk = false;
-    try { firebase.app().delete(); } catch(e) {}
-    db = null; messagesRef = null;
-  }, 1400);
-}
-
-// ════════════════════════════════════════
-//  TOAST
-// ════════════════════════════════════════
-let toastTimeout;
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => t.classList.remove("show"), 2800);
-}
-</script>
-</body>
-</html>
+<!-- Your JS files (ORDER MATTERS) -->
+<script src="js/firebase.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/call.js"></script>
+<!-- <script src="js/panic.js"></script> -->
+<script src="js/app.js"></script>
+</body></html>
